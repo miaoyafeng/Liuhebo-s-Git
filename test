@@ -1,0 +1,72 @@
+# encoding=utf-8
+import requests
+import re
+
+
+'''
+目标：获取淘宝搜索页面的信息，提取其中的商品名称和价格 
+理解： 淘宝的搜索接口 翻页的处理
+技术路线：requests‐bs4‐re
+'''
+
+
+
+# 步骤1：提交商品搜索请求，循环获取页面
+def get_html_text(url):
+    # user-agent:
+    # Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36
+    # User-Agent 为cookis再下拉的内容，chorm浏览器按F12键
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:69.0) Gecko/20100101 Firefox/69.0'}
+    try:
+        # coo后面 为自己登陆淘宝后。输入书包搜索后的cookis
+        coo = 't=e8fa04d0ad9bacb7d364de0b8386dd83; thw=cn; enc=PAIQ3iAq3ryPKcddaKzghwwMURKDVb6ylJyMmweZUbcJzTV1ozk6dKW%2FHLCAY4QNvIvWuS%2Fs6vsmbXNsZykWfA%3D%3D; mt=ci=46_1; hng=CN%7Czh-CN%7CCNY%7C156; isg=BAkJZNhjsBWnTUw1_tSZ-3JtGzNpCKPqEPJax6t-hfAv8ikE86YNWPegMJZhsZXA; l=dBPzdlL7qwhdyJmbBOCahurza77OSIOYYuPzaNbMi_5BZ6Tszo7OkM9I7F96VsWVtfTB4f7Vpep9-etbZTTnAKK-g3fyznGSMNTC.; cna=3vj8FeVLW0oCAT23dVrCmvyh; cookie2=136a40da550985589ce72727f6bb2a10; v=0; _tb_token_=7379811e7001; uc1=cookie16=U%2BGCWk%2F74Mx5tgzv3dWpnhjPaQ%3D%3D&cookie21=UtASsssmeW6lpyd%2BB%2B3t&cookie15=V32FPkk%2Fw0dUvg%3D%3D&existShop=false&pas=0&cookie14=UoTbnKU%2Fhp%2B0Ug%3D%3D&tag=8&lng=zh_CN; uc3=lg2=UtASsssmOIJ0bQ%3D%3D&id2=UU6jWcDkFqrJlw%3D%3D&vt3=F8dByuckARuKqzlwBHc%3D&nk2=szhglVj9Vpawr3UcLKo%3D; csg=4cf8e9c7; lgc=%5Cu90AA%5Cu738B%5Cu7231%5Cu4E0A%5Cu6697%5Cu708E%5Cu9F99; dnk=%5Cu90AA%5Cu738B%5Cu7231%5Cu4E0A%5Cu6697%5Cu708E%5Cu9F99; skt=396c0198954d8f22; existShop=MTU3MTY0MzMzMg%3D%3D; uc4=id4=0%40U2xuA%2FMQI%2F8e2Y%2BjIFcuRJFOoNi%2F&nk4=0%40sUflIhQbu2POIuFzvaZrNPaf7qrLE4YRRw%3D%3D; tracknick=%5Cu90AA%5Cu738B%5Cu7231%5Cu4E0A%5Cu6697%5Cu708E%5Cu9F99; _cc_=Vq8l%2BKCLiw%3D%3D; tg=0; JSESSIONID=F297503925BE75204441AC2A05608DC6; alitrackid=www.taobao.com; lastalitrackid=www.taobao.com'
+        cookies = {}
+        for line in coo.split(';'):  # 浏览器伪装
+            name, value = line.strip().split('=', 1)
+            cookies[name] = value
+        r = requests.get(url, cookies=cookies, headers=headers, timeout=30)
+        r.raise_for_status()
+        r.encoding = r.apparent_encoding
+        # print(r.text)[:-100]
+        return r.text
+    except:
+        return ''
+
+
+# 步骤2：对于每个页面，提取商品名称和价格信息
+def parse_page(ilt, html):
+    try:
+        plt = re.findall(r'\"view_price\"\:\"[\d\.]*\"', html)  # findall搜索全部字符串，view_price是源代码中表价格的值，后面的字符串为数字和点组成的字符串
+        tlt = re.findall(r'\"raw_title\"\:\".*?\"', html)  # 找到该字符串和后面符合正则表达式的字符串
+        for i in range(len(plt)):
+            price = eval(plt[i].split(':')[1])  # re.split() 将一个字符串按照正则表达式匹配结果进行分割，返回列表类型
+            title = eval(tlt[i].split(':')[1])  # 将re获得的字符串以：为界限分为两个字符串,并取第二个字符串
+            ilt.append([price, title])
+    except:
+        print('')
+
+
+# 步骤3：将信息输出到屏幕上
+def print_goods_list(ilt):
+    tplt = "{:4}\t{:8}\t{:16}"  # 长度为多少
+    print(tplt.format('序号', '价格', '名称'))
+    count = 0
+    for g in ilt:
+        count = count + 1
+        print(tplt.format(count, g[0], g[1]))
+
+
+if __name__ == '__main__':
+    goods = '5700xt'
+    depth = 4  # 要爬取几页
+    start_url = 'https://s.taobao.com/search?q=' + goods
+    info_list = []
+    for i in range(depth):
+        try:
+            url = start_url + '&s=' + str(44 * i)  # 44是淘宝每个页面呈现的宝贝数量
+            html = get_html_text(url)
+            parse_page(info_list, html)
+        except:
+            continue
+    print_goods_list(info_list)
